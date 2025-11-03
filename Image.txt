@@ -1,0 +1,130 @@
+const int   OBSTACLE_COUNT = 10;
+const float OBSTACLE_RESPAWN_TIME = 5.0;
+const float OBSTACLE_ADD_SPEED = 1.0;
+const float MAX_CAR_ROTATION = 15.0;
+
+float hash( float n ) {
+    return fract(sin(n * 12.9898) * 43758.5453);
+}
+
+float hash(vec2 co){
+   return fract(sin(dot(co.xy,vec2(12.9898,78.233))) * 43758.5453);
+}
+
+
+vec2 rotate( in vec2 p, in float angle ) {
+    float c = cos(angle);
+    float s = sin(angle);
+    return vec2(
+        c * p.x - s * p.y,
+        s * p.x + c * p.y
+    );
+}
+
+
+// SDF
+float sdRect( vec2 p, vec2 b ){
+    vec2 d = abs(p)-b;
+    return length(max(d,0.0)) + min(max(d.x,d.y),0.0);
+}
+
+float sdCircle( vec2 p, float r ){
+    return length(p) - r;
+}
+
+vec3 sdCar(vec2 uv, vec2 offset,float rotation, vec3 backGround){
+    vec3 col;
+    
+    vec2 center = uv - offset;
+    vec2 local = rotate(center, -rotation);
+    
+    if(sdRect(local, vec2(0.08,0.16)) > 0.0){
+        col = backGround;
+    }
+    if(sdRect(local - vec2(0.08,0.1), vec2(0.0176,0.04)) < 0.0){
+        col = vec3(0.1);
+    }
+    if(sdRect(local - vec2(0.08,-0.1), vec2(0.0176,0.04)) < 0.0){
+        col = vec3(0.1);
+    }
+    if(sdRect(local - vec2(-0.08,0.1), vec2(0.0176,0.04)) < 0.0){
+        col = vec3(0.1);
+    }
+    if(sdRect(local - vec2(-0.08,-0.1), vec2(0.0176,0.04)) < 0.0){
+        col = vec3(0.1);
+    }
+    if(sdRect(local, vec2(0.08,0.16)) < 0.0){
+        col = vec3(1.0,0.0,0.0);
+    }
+    if(sdRect(local - vec2(0.0,0.06),vec2(0.06,0.04)) < 0.0){
+        col = vec3(0.0, 0.8, 0.8);
+    }
+    
+    return col;
+}
+
+
+// Main Image
+void mainImage(out vec4 fragColor, in vec2 fragCoord )
+{
+    vec2 p = (2.0*fragCoord-iResolution.xy)/iResolution.y;
+    
+    // Бэкграунд
+    vec3 col = vec3(0.0,0.5,0.0);
+    
+    float roadHeight = 0.5;
+    float roadX = 0.0;
+    
+    if (p.x > roadX - roadHeight && p.x < roadX + roadHeight) {
+        col = vec3(0.2, 0.2, 0.25);
+    
+        float stripe = mod(p.y * 8.0 + iTime * 3.0, 1.0);
+        if (stripe < 0.6 && abs(p.x - roadX) < 0.015) {
+            col = vec3(1.0, 1.0, 0.0);
+        }
+    }
+    
+    float time = iTime;
+    
+    // Obstacle
+    for (int i = 0; i < OBSTACLE_COUNT; i++) {
+        float seed = float(i);
+        float objSpeed = OBSTACLE_ADD_SPEED * (0.8 + 0.4 * hash(vec2(seed, 1.0)));
+        float objSize = 0.03 + hash(vec2(seed, 2.0)) * 0.04;
+        float startTime = hash(vec2(seed, 3.0)) * OBSTACLE_RESPAWN_TIME;
+        
+        float fallTime = 2.0 / objSpeed;
+        float fallPos = mod(time + startTime, fallTime);
+        
+        float x = (hash(seed * 13.378) - 0.5) * 2.0;
+        float y = 1.0 + objSize - (fallPos / fallTime) * (2.0 + 2.0 * objSize);;
+        
+        vec2 pos = vec2(x,y);
+        
+        float shapeType = hash(seed * 7.8952);
+        float d;
+        if (shapeType < 0.25) {
+            d = sdRect(p - vec2(x, y), vec2(0.05));
+        } else{
+            d = sdCircle(p - vec2(x, y), 0.05);
+        }
+
+        if (d < 0.0) {
+            col = vec3(0.2, 0.8, 0.3);
+        }  
+        
+    }
+    
+    
+    float offset = texelFetch( iChannel0, ivec2(0,0), 0).x;
+    float velocity_x  = texelFetch( iChannel0, ivec2(0,0), 0).z;
+    
+    float car_rotation = radians(-velocity_x * MAX_CAR_ROTATION);
+    
+    
+    //Мафынка
+    col = sdCar(p, vec2 (2.0*offset,-0.6), car_rotation, col);
+  
+    
+    fragColor = vec4 (col,1.0);
+}
