@@ -1,0 +1,32 @@
+const int KEY_LEFT  = 37;
+const int KEY_UP    = 38;
+const int KEY_RIGHT = 39;
+const int KEY_DOWN  = 40;
+const int KEY_SPACE = 32;
+
+const float SPEED_OF_TURN = 1.;
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    vec2 offset = texelFetch( iChannel0, ivec2(0, 0), 0).xy;
+    float spacePressed = texelFetch(iChannel0, ivec2(0, 0), 0).z;
+    
+    vec2 left = texelFetch(iChannel1, ivec2(KEY_LEFT, 0), 0).x * vec2(-1, 0);
+    vec2 up = texelFetch(iChannel1, ivec2(KEY_UP,0), 0).x * vec2(0, -1);
+    vec2 right = texelFetch(iChannel1, ivec2(KEY_RIGHT, 0), 0).x * vec2(1, 0);
+    vec2 down = texelFetch(iChannel1, ivec2(KEY_DOWN, 0), 0).x * vec2(0, 1);
+    float space = texelFetch(iChannel1, ivec2(KEY_SPACE, 0), 0).x;
+
+    offset += (left + up + right + down) * SPEED_OF_TURN * iTimeDelta;
+    
+    if(space > 0.0 && spacePressed == 0.0) {
+        spacePressed = 1.0;
+    } else if(space == 0.0) {
+        spacePressed = 0.0;
+    }
+    
+    if (offset.y < -0.25){ offset.y = -0.25;}
+    if (offset.y > 0.12){ offset.y = 0.12;}
+    
+
+    fragColor = vec4(offset, spacePressed, 0);
+}

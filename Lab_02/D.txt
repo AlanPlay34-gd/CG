@@ -1,0 +1,54 @@
+const float groundY = -5.;
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    vec4 outData = vec4(0.0);
+    
+    if (iFrame == 0){
+        fragColor = vec4(0.0);
+    }
+    if (int(fragCoord.x) == 0){
+        vec3 bombPos = texelFetch(iChannel1, ivec2(3,4),0).rgb;
+        int craterCount = int(texelFetch(iChannel0, ivec2(0, 0), 0).r);
+            
+        if (int(fragCoord.y) == 0){
+            if (bombPos.y <= groundY){
+                craterCount++;
+            }
+        outData = vec4(craterCount, 0.0, 0.0, 0.0);
+        }
+        else {
+            vec3 craterPos = texelFetch(iChannel0, ivec2(0, int(fragCoord.y)), 0).rgb;
+
+            if (bombPos.y <= groundY && int(fragCoord.y) == craterCount+1) {
+                craterPos = bombPos;
+            }else { 
+                craterPos = texelFetch(iChannel0, ivec2(0, int(fragCoord.y)), 0).rgb; 
+            }
+            outData = vec4(craterPos, 0.0);
+        }
+    
+    }
+    else if (int(fragCoord.x) == 1){
+        vec3 bombPos = texelFetch(iChannel1, ivec2(5,4),0).rgb;
+        int craterCount = int(texelFetch(iChannel0, ivec2(1, 0), 0).r);
+            
+        if (int(fragCoord.y) == 0){
+            if (bombPos.y <= groundY){
+                craterCount++;
+            }
+        outData = vec4(craterCount, 0.0, 0.0, 0.0);
+        }
+        else {
+            vec3 craterPos = texelFetch(iChannel0, ivec2(1, int(fragCoord.y)), 0).rgb;
+
+            if (bombPos.y <= groundY && int(fragCoord.y) == craterCount+1) {
+                craterPos = bombPos;
+            }else { 
+                craterPos = texelFetch(iChannel0, ivec2(1, int(fragCoord.y)), 0).rgb; 
+            }
+            outData = vec4(craterPos, 0.0);
+        }
+    
+    }
+    fragColor = outData ;
+}

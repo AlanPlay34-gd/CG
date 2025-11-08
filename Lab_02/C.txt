@@ -1,0 +1,59 @@
+float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+vec2 hash2(vec2 p) {
+    return fract(sin(vec2(dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3))))*43758.5453);
+}
+
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    int v = int(fragCoord.y);
+    float i = fragCoord.x;
+    
+    float t = iTime;
+    vec3 posNow  = vec3(sin(t)*i, 0.0, cos(t)*i);
+    vec3 posPrev = texelFetch(iChannel0, ivec2(i, 0), 0).xyz;
+    
+    vec3 dir = normalize(posNow - posPrev);
+
+    vec3 up = vec3(0.0, 1.0, 0.0);
+    vec3 right = normalize(cross(up, dir));
+    up = normalize(cross(dir, right));
+    
+    
+    vec4 data;
+    
+    if (v == 0){
+        data = vec4(posNow,1.0);
+    }else if(v == 1){
+        data = vec4(right,1.0);
+    }else if(v == 2){
+        data = vec4(up,1.0);
+    }else if(v == 3){
+        data = vec4(dir,1.0);
+    }else if (v == 4) {
+        float gravity = 1.;
+        float groundY = -5.0;
+        
+        vec4 prevPos = texelFetch(iChannel0, ivec2(i,4),0);
+        vec3 bombPos = prevPos.xyz;
+        float startTime = prevPos.w;
+        if (startTime <= 0.0) {
+            bombPos = posNow - vec3(0.0, 0.3, 0.0);
+            startTime = t;
+        }
+
+        float fallTime = t - startTime;
+        float y = bombPos.y - 0.5 * gravity * fallTime * fallTime;
+        y = max(y, groundY);
+        bombPos.y = y;
+
+        if (y <= groundY) startTime = 0.0;
+
+        data = vec4(bombPos, startTime);
+    } else {
+        data = vec4(0.0);
+    }
+    
+    fragColor = data;
+}

@@ -1,0 +1,104 @@
+mat3 rotateX(float theta) {
+    float c = cos(theta);
+    float s = sin(theta);
+    return mat3(
+        vec3(1, 0, 0),
+        vec3(0, c, -s),
+        vec3(0, s, c)
+    );
+}
+
+mat3 rotateY(float theta) {
+    float c = cos(theta);
+    float s = sin(theta);
+    return mat3(
+        vec3(c, 0, s),
+        vec3(0, 1, 0),
+        vec3(-s, 0, c)
+    );
+}
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    int x = int(fragCoord.x);
+    int y = int(fragCoord.y);
+    
+    if (iFrame == 0) {
+        fragColor = vec4(0);
+        return;
+    }
+    
+    vec4 prevState = texelFetch(iChannel0, ivec2(x, y), 0);
+    fragColor = prevState;
+    
+    if (x == 0 && y == 0) {
+        vec3 inputData = texelFetch(iChannel1, ivec2(0,0), 0).xyz;
+        float spacePressed = inputData.z;
+        float lastSpaceState = prevState.w;
+        
+        if (spacePressed > 0.5 && lastSpaceState < 0.5) {
+            fragColor = vec4(1.0, 0.0, 0.0, iTime);
+        } else {
+            fragColor = vec4(0.0, 0.0, 0.0, spacePressed);
+        }
+        return;
+    }
+    
+    if (x == 1 && y == 0) {
+    vec4 control = texelFetch(iChannel0, ivec2(0,0), 0);
+    vec4 prev = texelFetch(iChannel0, ivec2(1,0), 0);
+
+    if (control.w > 0.0 && prev.w == 0.0) {
+        vec2 rot = texelFetch(iChannel1, ivec2(0,0), 0).xy;
+        vec3 dir = vec3(0.0, 0.0, 1.0);
+        dir = rotateY(-rot.x) * dir;
+        dir = rotateX(rot.y) * dir;
+        dir = normalize(dir);
+
+        vec3 pos = vec3(0.0, 0.5, 0.0) + dir * 0.8;
+        fragColor = vec4(pos, 1.0);
+        return;
+    }
+
+    // === Полёт пули ===
+    if (prev.w > 0.0) {
+        vec3 start = vec3(0.0, 0.5, 0.0);
+        vec3 dir = normalize(prev.xyz - start);
+        vec3 pos = prev.xyz + dir * 10.0 * iTimeDelta;
+
+        bool hitGround = pos.y < -0.4;
+        bool hitEnemy = distance(pos, vec3(10.0, 0.5, 10.0)) < 1.0;
+
+        if (hitGround || hitEnemy) {
+            // удаляем пулю
+            fragColor = vec4(0.0);
+            return;
+        }
+
+        fragColor = vec4(pos, 1.0);
+        return;
+    }
+
+    fragColor = vec4(0.0);
+    return;
+}
+
+// === Обработка взрыва ===
+if (x == 2 && y == 0) {
+    vec4 bullet = texelFetch(iChannel0, ivec2(1,0), 0);
+    vec4 explosion = texelFetch(iChannel0, ivec2(2,0), 0);
+
+    bool hitGround = (bullet.y < -0.4);
+    bool hitEnemy = distance(bullet.xyz, vec3(10.0, 0.5, 10.0)) < 1.0;
+
+    if ((hitGround || hitEnemy) && bullet.w > 0.0) {
+        explosion = vec4(bullet.xyz, 1.0); // новая вспышка
+    } else {
+        // затухание
+        explosion.w *= pow(0.92, iTimeDelta * 60.0);
+        if (explosion.w < 0.0005) explosion.w = 0.0;
+    }
+
+    fragColor = explosion;
+    return;
+}
+}
