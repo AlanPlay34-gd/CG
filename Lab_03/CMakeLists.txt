@@ -3,4 +3,9 @@ project(Lab_03)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(Lab_03 main.cpp tgaimage.cpp)
+add_executable(Lab_03 main.cpp
+        tgaimage.cpp
+        tgaimage.h
+        model.cpp
+        model.h
+        geometry.h)
