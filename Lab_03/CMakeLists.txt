@@ -8,4 +8,5 @@ add_executable(Lab_03 main.cpp
         tgaimage.h
         model.cpp
         model.h
-        geometry.h)
+        geometry.h
+        geometry.cpp)
