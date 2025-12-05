@@ -5,32 +5,39 @@
 #include "../Include/mesh.h"
 #include "../Include/math.h"
 #include "../Include/our_gl.h"
+#include "../Include/camera.h"
 
 Model *model     = NULL;
 const int width  = 800;
 const int height = 800;
 
 Vec3f light_dir(1,1,1);
-Vec3f       eye(0,0,3);
-Vec3f    center(0,0,0);
-Vec3f        up(0,1,0);
+
+Camera cam(
+    /* eye    */ Vec3f(1, 1, 3),
+    /* center */ Vec3f(0, 0, 0),
+    /* up     */ Vec3f(0, 1, 0),
+    /* fov    */ 60.f,
+    /* near   */ 1.f,
+    /* far    */ 1000.f
+);
 
 struct Shader : public IShader {
-    Vec3f          varying_intensity; // written by vertex shader, read by fragment shader
-    mat<2,3,float> varying_uv;        // same as above
+    Vec3f          varying_intensity;
+    mat<2,3,float> varying_uv;
 
     virtual Vec4f vertex(int iface, int nthvert) {
         varying_uv.set_col(nthvert, model->uv(iface, nthvert));
-        varying_intensity[nthvert] = std::max(0.f, model->normal(iface, nthvert)*light_dir); // get diffuse lighting intensity
-        Vec4f gl_Vertex = embed<4>(model->vert(iface, nthvert)); // read the vertex from .obj file
-        return Viewport*Projection*ModelView*gl_Vertex; // transform it to screen coordinates
+        varying_intensity[nthvert] = std::max(0.f, model->normal(iface, nthvert)*light_dir);
+        Vec4f gl_Vertex = embed<4>(model->vert(iface, nthvert));
+        return Viewport*Projection*ModelView*gl_Vertex;
     }
 
     virtual bool fragment(Vec3f bar, TGAColor &color) {
-        float intensity = varying_intensity*bar;   // interpolate intensity for the current pixel
-        Vec2f uv = varying_uv*bar;                 // interpolate uv for the current pixel
-        color = model->diffuse(uv)*intensity;      // well duh
-        return false;                              // no, we do not discard this pixel
+        float intensity = varying_intensity*bar;
+        Vec2f uv = varying_uv*bar;
+        color = model->diffuse(uv)*intensity;
+        return false;
     }
 };
 
@@ -41,9 +48,9 @@ int main(int argc, char** argv) {
         model = new Model("../obj/african_head.obj");
     }
 
-    lookat(eye, center, up);
+    cam.applyView();
+    cam.applyProjection(width, height);
     viewport(width/8, height/8, width*3/4, height*3/4);
-    projection(-1.f/(eye-center).norm());
     light_dir.normalize();
 
     TGAImage image  (width, height, TGAImage::RGB);
