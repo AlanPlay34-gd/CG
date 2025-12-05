@@ -1,24 +1,26 @@
 #include <vector>
 #include <iostream>
 
-#include "tgaimage.h"
-#include "model.h"
-#include "geometry.h"
-#include "our_gl.h"
+#include "../Include/tgaimage.h"
+#include "../Include/mesh.h"
+#include "../Include/math.h"
+#include "../Include/our_gl.h"
 
 Model *model     = NULL;
 const int width  = 800;
 const int height = 800;
 
 Vec3f light_dir(1,1,1);
-Vec3f       eye(1,1,3);
+Vec3f       eye(0,0,3);
 Vec3f    center(0,0,0);
 Vec3f        up(0,1,0);
 
-struct GouraudShader : public IShader {
-    Vec3f varying_intensity; // written by vertex shader, read by fragment shader
+struct Shader : public IShader {
+    Vec3f          varying_intensity; // written by vertex shader, read by fragment shader
+    mat<2,3,float> varying_uv;        // same as above
 
     virtual Vec4f vertex(int iface, int nthvert) {
+        varying_uv.set_col(nthvert, model->uv(iface, nthvert));
         varying_intensity[nthvert] = std::max(0.f, model->normal(iface, nthvert)*light_dir); // get diffuse lighting intensity
         Vec4f gl_Vertex = embed<4>(model->vert(iface, nthvert)); // read the vertex from .obj file
         return Viewport*Projection*ModelView*gl_Vertex; // transform it to screen coordinates
@@ -26,7 +28,8 @@ struct GouraudShader : public IShader {
 
     virtual bool fragment(Vec3f bar, TGAColor &color) {
         float intensity = varying_intensity*bar;   // interpolate intensity for the current pixel
-        color = TGAColor(255, 255, 255)*intensity; // well duh
+        Vec2f uv = varying_uv*bar;                 // interpolate uv for the current pixel
+        color = model->diffuse(uv)*intensity;      // well duh
         return false;                              // no, we do not discard this pixel
     }
 };
@@ -46,7 +49,7 @@ int main(int argc, char** argv) {
     TGAImage image  (width, height, TGAImage::RGB);
     TGAImage zbuffer(width, height, TGAImage::GRAYSCALE);
 
-    GouraudShader shader;
+    Shader shader;
     for (int i=0; i<model->nfaces(); i++) {
         Vec4f screen_coords[3];
         for (int j=0; j<3; j++) {

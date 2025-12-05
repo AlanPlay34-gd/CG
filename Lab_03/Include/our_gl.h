@@ -2,7 +2,7 @@
 #define __OUR_GL_H__
 
 #include "tgaimage.h"
-#include "geometry.h"
+#include "../Include/math.h"
 
 extern Matrix ModelView;
 extern Matrix Viewport;

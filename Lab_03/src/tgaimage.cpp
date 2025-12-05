@@ -3,7 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
-#include "tgaimage.h"
+#include "..//Include/tgaimage.h"
 
 TGAImage::TGAImage() : data(NULL), width(0), height(0), bytespp(0) {
 }
@@ -202,7 +202,6 @@ bool TGAImage::write_tga_file(const char *filename, bool rle) {
     return true;
 }
 
-// TODO: it is not necessary to break a raw chunk for two equal pixels (for the matter of the resulting size)
 bool TGAImage::unload_rle_data(std::ofstream &out) {
     const unsigned char max_chunk_length = 128;
     unsigned long npixels = width*height;
