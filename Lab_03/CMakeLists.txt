@@ -1,12 +1,14 @@
 cmake_minimum_required(VERSION 3.31)
 project(Lab_03)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
+add_executable(renderer
+        src/main.cpp
+        src/math.h
+        src/rasterizer.cpp
+        src/rasterizer.h
+        src/camera.h
+        src/shader.h
+)
 
-add_executable(Lab_03 main.cpp
-        tgaimage.cpp
-        tgaimage.h
-        model.cpp
-        model.h
-        geometry.h
-        geometry.cpp)
+include_directories(third_party)
