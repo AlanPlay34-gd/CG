@@ -341,7 +341,7 @@ bool TGAImage::scale(int w, int h) {
         erry += h;
         oscanline += olinebytes;
         while (erry>=(int)height) {
-            if (erry>=(int)height<<1) // it means we jump over a scanline
+            if (erry>=(int)height<<1)
                 memcpy(tdata+nscanline+nlinebytes, tdata+nscanline, nlinebytes);
             erry -= height;
             nscanline += nlinebytes;

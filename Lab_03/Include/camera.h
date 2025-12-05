@@ -10,26 +10,19 @@ public:
     Vec3f center;
     Vec3f up;
 
-    float fov;      // в градусах
-    float near;
-    float far;
 
     Camera(Vec3f e, Vec3f c, Vec3f u,
            float fov_deg = 60.f,
            float near_plane = 1.f,
            float far_plane  = 1000.f)
-        : eye(e), center(c), up(u),
-          fov(fov_deg), near(near_plane), far(far_plane)
+        : eye(e), center(c), up(u)
     {}
 
-    // Установить view-матрицу
     void applyView() const {
         lookat(eye, center, up);
     }
 
-    // Установить projection-матрицу
     void applyProjection(float viewport_width, float viewport_height) const {
-        // Используем старую формулу, как в main: k = -1 / |eye-center|
         float k = -1.f / (eye - center).norm();
         projection(k);
     }

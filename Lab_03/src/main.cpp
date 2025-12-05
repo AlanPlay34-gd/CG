@@ -14,29 +14,83 @@ const int height = 800;
 Vec3f light_dir(1,1,1);
 
 Camera cam(
-    /* eye    */ Vec3f(1, 1, 3),
+    /* eye    */ Vec3f(0, 0, 3),
     /* center */ Vec3f(0, 0, 0),
-    /* up     */ Vec3f(0, 1, 0),
-    /* fov    */ 60.f,
-    /* near   */ 1.f,
-    /* far    */ 1000.f
+    /* up     */ Vec3f(0, 1, 0)
 );
 
 struct Shader : public IShader {
-    Vec3f          varying_intensity;
-    mat<2,3,float> varying_uv;
+    mat<3,3,float> varying_norm; // нормали по вершинам
+    mat<3,3,float> varying_pos;  // позиции по вершинам
+    mat<2,3,float> varying_uv;   // uv по вершинам
+
 
     virtual Vec4f vertex(int iface, int nthvert) {
+        // UV
         varying_uv.set_col(nthvert, model->uv(iface, nthvert));
-        varying_intensity[nthvert] = std::max(0.f, model->normal(iface, nthvert)*light_dir);
+        // вершина из модели
         Vec4f gl_Vertex = embed<4>(model->vert(iface, nthvert));
-        return Viewport*Projection*ModelView*gl_Vertex;
+
+        Vec4f pos_eye4 = ModelView * gl_Vertex;
+        Vec3f pos_eye = proj<3>(pos_eye4);
+        varying_pos.set_col(nthvert, pos_eye);
+
+        Vec4f n4 = embed<4>(model->normal(iface, nthvert), 0.0f);
+        Vec3f n_eye = proj<3>(ModelView * n4).normalize();
+        varying_norm.set_col(nthvert, n_eye);
+
+        return Viewport * Projection * ModelView * gl_Vertex;
     }
 
+    // fragment: интерполируем нормаль/позицию/uv и считаем Phong
     virtual bool fragment(Vec3f bar, TGAColor &color) {
-        float intensity = varying_intensity*bar;
-        Vec2f uv = varying_uv*bar;
-        color = model->diffuse(uv)*intensity;
+        // --- интерполяция ---
+        Vec2f interp_uv = varying_uv * bar;
+        Vec3f interp_pos = varying_pos * bar;
+        Vec3f interp_norm = (varying_norm * bar).normalize();
+
+        // нормализованный вектор света
+        Vec3f light_dir_eye = proj<3>(ModelView * embed<4>(::light_dir, 0.0f)).normalize();
+
+        // view vector
+        Vec3f view_dir = (Vec3f(0,0,0) - interp_pos).normalize();
+
+        const float ambient_strength = 0.1f;
+
+        // diffuse
+        float diff = std::max(0.f, interp_norm * light_dir_eye);
+
+        // specular (Phong)
+        // R = reflect(-L, N) = 2*(N·L)*N - L
+        Vec3f R = interp_norm * (2.f * (interp_norm * light_dir_eye)) - light_dir_eye;
+        float spec_angle = std::max(0.f, R * view_dir);
+
+        float spec_map = model->specular(Vec2f(interp_uv[0], interp_uv[1]));
+
+        if (spec_map < 1e-6f) spec_map = 16.f;
+        float shininess = spec_map;
+        float spec = std::pow(spec_angle, shininess);
+
+        // получаем base diffuse color из текстуры
+        Vec2f uv = Vec2f(interp_uv[0], interp_uv[1]);
+        TGAColor tex = model->diffuse(uv);
+        Vec3f tex_rgb = Vec3f((float)tex[2], (float)tex[1], (float)tex[0]);
+
+        Vec3f ambient = tex_rgb * ambient_strength;
+        Vec3f diffuse = tex_rgb * diff;
+        Vec3f specular = Vec3f(255.f,255.f,255.f) * spec * 0.5f;
+
+        Vec3f result = ambient + diffuse + specular;
+
+        for (int i=0;i<3;i++) {
+            if (result[i] > 255.f) result[i] = 255.f;
+            if (result[i] < 0.f)   result[i] = 0.f;
+        }
+        color[0] = (unsigned char)result[2]; // B
+        color[1] = (unsigned char)result[1]; // G
+        color[2] = (unsigned char)result[0]; // R
+        color[3] = 255; // A
+
         return false;
     }
 };
@@ -65,7 +119,7 @@ int main(int argc, char** argv) {
         triangle(screen_coords, shader, image, zbuffer);
     }
 
-    image.  flip_vertically(); // to place the origin in the bottom left corner of the image
+    image.  flip_vertically();
     zbuffer.flip_vertically();
     image.  write_tga_file("output.tga");
     zbuffer.write_tga_file("zbuffer.tga");
