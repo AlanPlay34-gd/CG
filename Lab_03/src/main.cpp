@@ -14,10 +14,26 @@ const int height = 800;
 Vec3f light_dir(1,1,1);
 
 Camera cam(
-    /* eye    */ Vec3f(0, 0, 3),
+    /* eye    */ Vec3f(2, 2, 10),
     /* center */ Vec3f(0, 0, 0),
     /* up     */ Vec3f(0, 1, 0)
 );
+
+Vec3f cube_vertices_global[8] = {
+    {-1, -1, -1}, {1, -1, -1},
+    {1,  1, -1}, {-1, 1, -1},
+    {-1, -1,  1}, {1, -1,  1},
+    {1,  1,  1}, {-1, 1,  1}
+};
+
+int cube_faces[12][3] = {
+    {0,1,2}, {0,2,3}, // задняя грань
+    {4,5,6}, {4,6,7}, // передняя грань
+    {0,1,5}, {0,5,4}, // нижняя грань
+    {2,3,7}, {2,7,6}, // верхняя грань
+    {1,2,6}, {1,6,5}, // правая грань
+    {0,3,7}, {0,7,4}  // левая грань
+};
 
 struct Shader : public IShader {
     mat<3,3,float> varying_norm; // нормали по вершинам
@@ -95,6 +111,28 @@ struct Shader : public IShader {
     }
 };
 
+
+
+struct CubeShader : public IShader {
+    CubeShader(const TGAColor &c, float a) {
+        base_color = c;
+        alpha = a;
+    }
+
+    TGAColor base_color;
+
+    virtual Vec4f vertex(int iface, int nthvert) {
+        int idx = cube_faces[iface][nthvert];
+        Vec4f v = embed<4>(cube_vertices_global[idx]);
+        return Viewport * Projection * ModelView * v;
+    }
+
+    virtual bool fragment(Vec3f bar, TGAColor &color) {
+        color = base_color;
+        return false;
+    }
+};
+
 int main(int argc, char** argv) {
     if (2==argc) {
         model = new Model(argv[1]);
@@ -111,13 +149,21 @@ int main(int argc, char** argv) {
     TGAImage zbuffer(width, height, TGAImage::GRAYSCALE);
 
     Shader shader;
-    for (int i=0; i<model->nfaces(); i++) {
+    for (int i = 0; i < model->nfaces(); i++) {
         Vec4f screen_coords[3];
-        for (int j=0; j<3; j++) {
+        for (int j = 0; j < 3; j++)
             screen_coords[j] = shader.vertex(i, j);
-        }
         triangle(screen_coords, shader, image, zbuffer);
     }
+
+    CubeShader cubeshader(TGAColor(50,150,255,255), 0.3f); // alpha = 0.3
+    for (int i = 0; i < 12; i++) {
+        Vec4f screen_coords[3];
+        for (int j = 0; j < 3; j++)
+            screen_coords[j] = cubeshader.vertex(i, j);
+        triangle(screen_coords, cubeshader, image, zbuffer);
+    }
+
 
     image.  flip_vertically();
     zbuffer.flip_vertically();
