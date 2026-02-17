@@ -110,9 +110,6 @@ struct Shader : public IShader {
         return false;
     }
 };
-
-
-
 struct CubeShader : public IShader {
     CubeShader(const TGAColor &c, float a) {
         base_color = c;
